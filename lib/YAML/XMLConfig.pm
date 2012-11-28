@@ -10,7 +10,7 @@ use Carp;
 
 sub weaver {
   my ($class, $macros) = @_;
-  ref $macros or $macros = $class->load_yaml($macros); 
+  ref $macros or $macros = $class->load_yaml($macros);
   bless {map { ($_=>$class->macro($$macros{$_})) } keys %$macros}, $class;
 }
 
@@ -48,7 +48,7 @@ sub weave {
   if (ref $item eq "ARRAY") {
     return [map { $weaver->weave($key, $_) } @$item];
   }
-  
+
   my $default;
   my $macro = $weaver->macro_for($key);
   ($default, $item) = $macro->default_for($item);
@@ -127,7 +127,7 @@ sub extract {
   my $params = delete $$item{'$'};
   defined($params) or $params = [];
   ref $params or $params = [$params];
-  
+
   return ($params, $item);
 }
 

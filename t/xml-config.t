@@ -81,7 +81,7 @@ C<< $weaver->load_yaml($path) >> is equivalent to C<Load scalar read_file $path>
 write_file($yaml_config, Dump($config_hash));
 eq_or_diff(
   $weaver->load_yaml($yaml_config),
-  Load scalar read_file $yaml_config,
+  (Load scalar read_file $yaml_config),
   $why,
 );
 
@@ -105,7 +105,7 @@ read_config($foo) is equivalent to weave("", $weaver->load_yaml($foo))
 write_file($yaml_config, Dump($config_hash));
 eq_or_diff(
   $weaver->read_config($yaml_config),
-  $weaver->weave("", $weaver->load_yaml($yaml_config)), 
+  $weaver->weave("", $weaver->load_yaml($yaml_config)),
   $why,
 );
 
@@ -122,7 +122,7 @@ eq_or_diff(
 =head2 xml
 
 A convenience abbreviation for C<XML::Simple>'s C<XMLout> routine.
-C<< $weaver->xml($h) >> is equivalent to 
+C<< $weaver->xml($h) >> is equivalent to
 
   XMLout(
     $h,
@@ -204,7 +204,7 @@ eq_or_diff(
   "$why (key hit)",
 );
 
-=pod 
+=pod
 
 Otherwise, we check to see if there is a macro for the key.  If so, we use
 it to calculate the hash of defaults.  If not, the default hash is empty.

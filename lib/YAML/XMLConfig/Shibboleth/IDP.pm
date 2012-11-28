@@ -22,12 +22,12 @@ sub make_attribute_conf {
     or croak "config_dir is a required option";
   YAML::XMLConfig->fill_defaults(\%opt, \%default);
   $_ = File::Spec->catfile($config_dir, $_) for values %opt;
-  
+
   my $weaver = YAML::XMLConfig->weaver($opt{defaults});
-  
+
   my $filter = $weaver->read_config($opt{filter_yaml});
   my $resolver = $weaver->read_config($opt{resolver_yaml});
-  
+
   my %resolved = attributes($resolver, qw(resolver:AttributeDefinition id));
   my %filtered = attributes($filter, qw(AttributeRule attributeID));
   my @undefined = grep { ! $resolved{$_} } keys %filtered;
@@ -38,7 +38,7 @@ sub make_attribute_conf {
 
   write_file($opt{filter_xml}, $weaver->xml($filter));
   write_file($opt{resolver_xml}, $weaver->xml($resolver));
-  
+
   return 1;
 }
 
