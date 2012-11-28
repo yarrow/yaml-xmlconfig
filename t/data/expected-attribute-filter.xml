@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AttributeFilterPolicyGroup id="ShibbolethFilterPolicy"
+                            xmlns="urn:mace:shibboleth:2.0:afp"
+                            xmlns:basic="urn:mace:shibboleth:2.0:afp:mf:basic"
+                            xmlns:saml="urn:mace:shibboleth:2.0:afp:mf:saml"
+                            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                            xsi:schemaLocation="urn:mace:shibboleth:2.0:afp classpath:/schema/shibboleth-2.0-afp.xsd urn:mace:shibboleth:2.0:afp:mf:basic classpath:/schema/shibboleth-2.0-afp-mf-basic.xsd urn:mace:shibboleth:2.0:afp:mf:saml classpath:/schema/shibboleth-2.0-afp-mf-saml.xsd">
+  <AttributeFilterPolicy>
+    <AttributeRule attributeID="eduPersonAffiliation">
+      <PermitValueRule xsi:type="basic:ANY" />
+    </AttributeRule>
+    <AttributeRule attributeID="eduPersonEntitlement">
+      <PermitValueRule xsi:type="basic:ANY" />
+    </AttributeRule>
+    <AttributeRule attributeID="eduPersonTargetedID">
+      <PermitValueRule xsi:type="basic:ANY" />
+    </AttributeRule>
+    <PolicyRequirementRule value="https://service1.internet2.edu/shibboleth"
+                           xsi:type="basic:AttributeRequesterString" />
+  </AttributeFilterPolicy>
+</AttributeFilterPolicyGroup>

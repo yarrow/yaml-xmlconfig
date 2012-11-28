@@ -1,0 +1,79 @@
+---
+AttributeResolver:
+  resolver:AttributeDefinition:
+  - id: eduPersonTargetedID
+    nameIdFormat: urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
+    sourceAttributeID: computedID
+    xmlns: urn:mace:shibboleth:2.0:resolver:ad
+    xsi:type: SAML2NameID
+    resolver:AttributeEncoder:
+    - name: urn:oid:1.3.6.1.4.1.5923.1.1.1.10
+      xmlns: urn:mace:shibboleth:2.0:attribute:encoder
+      xsi:type: SAML1XMLObject
+    - friendlyName: eduPersonTargetedID
+      name: urn:oid:1.3.6.1.4.1.5923.1.1.1.10
+      xmlns: urn:mace:shibboleth:2.0:attribute:encoder
+      xsi:type: SAML2XMLObject
+    resolver:Dependency:
+      ref: computedID
+  - $: eduPersonAffiliation
+    xsi:type: Simple
+    resolver:AttributeEncoder:
+    - name: urn:mace:dir:attribute-def:eduPersonAffiliation
+      xsi:type: SAML1String
+    - friendlyName: eduPersonAffiliation
+      name: urn:oid:1.3.6.1.4.1.5923.1.1.1.1
+      xsi:type: SAML2String
+  - $: eduPersonEntitlement
+    sourceAttributeID: eduPersonEntitlement
+    xsi:type: Simple
+    resolver:AttributeEncoder:
+    - name: urn:mace:dir:attribute-def:eduPersonEntitlement
+      xsi:type: SAML1String
+    - friendlyName: eduPersonEntitlement
+      name: urn:oid:1.3.6.1.4.1.5923.1.1.1.7
+      xsi:type: SAML2String
+    resolver:Dependency:
+      ref: staticAttributes
+  resolver:DataConnector:
+  - baseDN: ou=people,dc=vcu,dc=edu
+    id: myLDAP
+    ldapURL: ldap://edir.vcu.edu
+    principal: uid=shibboleth,ou=appl,dc=vcu,dc=edu
+    principalCredential: BwaaaaHaHa
+    xmlns: urn:mace:shibboleth:2.0:resolver:dc
+    xsi:type: LDAPDirectory
+    FilterTemplate:
+    - (uid=$requestContext.principalName)
+  - id: staticAttributes
+    xmlns: urn:mace:shibboleth:2.0:resolver:dc
+    xsi:type: Static
+    Attribute:
+    - id: eduPersonAffiliation
+      Value:
+      - member
+    - id: eduPersonEntitlement
+      Value:
+      - urn:example.org:entitlement:entitlement1
+      - urn:mace:dir:entitlement:common-lib-terms
+  - generatedAttributeID: computedID
+    id: computedID
+    salt: Sb6erjzIVbcUuzvdLMdmY56Dw4esWuns
+    sourceAttributeID: uid
+    xmlns: urn:mace:shibboleth:2.0:resolver:dc
+    xsi:type: ComputedId
+    resolver:Dependency:
+      ref: myLDAP
+  resolver:PrincipalConnector:
+  - id: shibTransient
+    nameIDFormat: urn:mace:shibboleth:1.0:nameIdentifier
+    xmlns: urn:mace:shibboleth:2.0:resolver:pc
+    xsi:type: Transient
+  - id: saml1Unspec
+    nameIDFormat: urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified
+    xmlns: urn:mace:shibboleth:2.0:resolver:pc
+    xsi:type: Transient
+  - id: saml2Transient
+    nameIDFormat: urn:oasis:names:tc:SAML:2.0:nameid-format:transient
+    xmlns: urn:mace:shibboleth:2.0:resolver:pc
+    xsi:type: Transient

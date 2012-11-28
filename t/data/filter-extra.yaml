@@ -1,0 +1,9 @@
+---
+AttributeFilterPolicyGroup:
+  AttributeFilterPolicy:
+  - PolicyRequirementRule: https://service1.internet2.edu/shibboleth
+    AttributeRule:
+    - eduPersonAffiliation
+    - eduPersonEntitlement
+    - eduPersonTargetedID
+    - eduPersonBwaHaHa
