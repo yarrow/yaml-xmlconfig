@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use YAML::XMLConfig::Shibboleth::IDP;
+use Getopt::Long;
+
+my $usage = <<"/";
+Usage: $0 idp-conf-dir [options]
+
+Allowable options, and their default values, are:
+  --defaults       idp-defaults.yaml  
+  --filter_yaml    attribute-filter.yaml  
+  --filter_xml     attribute-filter.xml  
+  --resolver_yaml  attribute-resolver.yaml  
+  --resolver_xml   attribute-resolver.xml  
+/
+
+my %opt;
+GetOptions(\%opt,
+  qw(default=s filter_yaml=s filter_xml=s resolver_yaml=s resolver_xml=s)
+) or die $usage;
+
+@ARGV == 1 or die $usage;
+
+$opt{config_dir} = $ARGV[0];
+YAML::XMLConfig::Shibboleth::IDP->make_attribute_conf(\%opt);
