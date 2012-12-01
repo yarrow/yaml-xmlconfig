@@ -9,9 +9,9 @@ use Carp;
 
 my %default = (
   defaults => "idp-defaults.yaml",
-  filter_yaml => "attribute-filter.yaml",
+  filter_yaml => "filter.yaml",
   filter_xml => "attribute-filter.xml",
-  resolver_yaml => "attribute-resolver.yaml",
+  resolver_yaml => "resolver.yaml",
   resolver_xml => "attribute-resolver.xml",
 );
 sub make_attribute_conf {

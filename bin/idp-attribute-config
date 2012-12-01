@@ -9,9 +9,9 @@ Usage: $0 idp-conf-dir [options]
 
 Allowable options, and their default values, are:
   --defaults       idp-defaults.yaml  
-  --filter_yaml    attribute-filter.yaml  
+  --filter_yaml    filter.yaml  
   --filter_xml     attribute-filter.xml  
-  --resolver_yaml  attribute-resolver.yaml  
+  --resolver_yaml  resolver.yaml  
   --resolver_xml   attribute-resolver.xml  
 /
 
