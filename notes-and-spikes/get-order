@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use autodie;
+
+my ($OPEN, $CLOSE) = qw/( )/;
+open my $pyx, "-|", "pyx @ARGV";
+my %orders_for;
+my @children = [];
+while (<$pyx>) {
+  my ($op, $name) = /^([$OPEN$CLOSE])(.*)/o or next;
+  if ($op eq $OPEN) {
+    push @{$children[-1]}, $name;
+    push @children, [];
+  }
+  elsif ($op eq $CLOSE) {
+    my $order= normalize(@{$children[-1]});
+    pop @children;
+    $orders_for{$name}{$order}++ if $order;
+  }
+}
+foreach my $name (sort keys %orders_for) {
+  my $order_count = $orders_for{$name};
+  my @orders = sort keys %$order_count or next;
+  print "$name\n";
+  foreach my $order (@orders) {
+    printf "%2d %s\n", $$order_count{$order}, $order;
+  }
+}
+
+sub normalize {
+  my @in = @_;
+  my $last = "\n";
+  my @uniq;
+  foreach (@_) {
+    push @uniq, $_ unless $_ eq $last;
+    $last = $_;
+  }
+#  print "YES: @uniq was @_\n" if join(",",@uniq) ne join(",",@_);
+  return join(",", @uniq);
+}

@@ -10,9 +10,17 @@ use Carp;
 
 sub weaver {
   my ($class, $macros) = @_;
-  ref $macros or $macros = $class->load_yaml($macros);
-  bless {map { ($_=>$class->macro($$macros{$_})) } keys %$macros}, $class;
+  $macros = ref $macros ? {%$macros} : $class->load_yaml($macros);
+  my $element_order = delete $$macros{'$ELEMENT_ORDER'} || {};
+  my $cdata = delete $$macros{'$CDATA'} || [];
+  bless {
+    xml_out => YAML::XMLConfig::out->new($element_order, $cdata),
+    macros => {map { ($_=>$class->macro($$macros{$_})) } keys %$macros},
+  }, $class;
 }
+
+sub macros { $_[0]->{macros} }
+sub xml_out { $_[0]->{xml_out} }
 
 sub load_yaml {
   my ($class, $path) = @_;
@@ -27,26 +35,21 @@ sub read_config {
       or croak "Second argument must be a HASH reference if given";
     $xml = lc($opt->{as}||"") eq "xml";
   }
-  my $result = $weaver->weave("", $weaver->load_yaml($path));
+  my $result = $weaver->weave($weaver->load_yaml($path));
   return $xml ? $weaver->xml($result) : $result;
 }
 
 sub xml {
-  my ($class, $object) = @_;
-  return XMLout(
-    $object,
-    keeproot => 1,
-    keyattr => [],
-    attrindent => 1,
-    xmldecl => '<?xml version="1.0" encoding="UTF-8"?>',
-  );
+  my ($weaver, $object) = @_;
+  return $weaver->xml_out->out($object);
 }
 
 sub weave {
-  my ($weaver, $key, $item) = @_;
+  my ($weaver, $item, $key) = @_;
+  defined($key) or $key = "";
 
   if (ref $item eq "ARRAY") {
-    return [map { $weaver->weave($key, $_) } @$item];
+    return [map { $weaver->weave($_, $key) } @$item];
   }
 
   my $default;
@@ -60,14 +63,14 @@ Can't weave expanded item
   Problem: expanded type is not HASH
   Item: @{[Dump($item)]}
 /
-  $item = {map { $_ => $weaver->weave($_, $$item{$_}) } keys %$item};
+  $item = {map { $_ => $weaver->weave($$item{$_}, $_) } keys %$item};
   $weaver->fill_defaults($item, $default);
   return $item;
 }
 
 sub macro_for {
   my ($weaver, $key) = @_;
-  return $$weaver{$key} || YAML::XMLConfig::IdentityMacro->new;
+  return $$weaver{macros}{$key} || YAML::XMLConfig::IdentityMacro->new;
 }
 package YAML::XMLConfig::IdentityMacro;
   my $identity_macro;
@@ -166,6 +169,61 @@ sub fill_defaults {
     }
   }
   return;
+}
+
+package YAML::XMLConfig::out;
+use base qw(XML::Simple);
+use YAML::XS;
+use Carp;
+
+sub new {
+  my ($class, $element_order, $cdata) = @_;
+  my $xml_out = $class->SUPER::new(
+    keeproot => 1,
+    keyattr => [],
+    attrindent => 1,
+    noescape => 1,
+    xmldecl => '<?xml version="1.0" encoding="UTF-8"?>',
+  );
+  $$xml_out{element_order} = $element_order;
+  $$xml_out{cdata} = {map { $_ => 1 } @$cdata};
+  return $xml_out;
+}
+
+sub out {
+  my ($self, $obj) = @_;
+  $self->XMLout($self->escape($obj, ""));
+}
+
+sub escape {
+  my ($self, $obj, $key) = @_;
+
+  return [map { $self->escape($_, $key) } @$obj]
+    if ref $obj eq "ARRAY";
+
+  return { map { ($_ => $self->escape($$obj{$_}, $_)) } keys %$obj }
+    if ref $obj eq "HASH";
+
+  croak "Reference is not ARRAY or HASH: ", Dump($obj)
+    if ref $obj;
+
+  if ($$self{cdata}{$key}) {
+    return "<![CDATA[$obj]]>";
+  }
+  else {
+    return $self->escape_value($obj);
+  }
+}
+
+sub sorted_keys {
+  my ($self, $name, $ref) = @_;
+  my $order = $$self{element_order}{$name} or return sort keys %$ref;
+  my %hash = %$ref;
+  my @ordered_keys;
+  foreach my $key (@$order) {
+    push @ordered_keys, $key if delete $hash{$key};
+  }
+  return (@ordered_keys, sort keys %hash);
 }
 
 1;

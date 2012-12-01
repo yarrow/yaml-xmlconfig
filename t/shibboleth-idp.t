@@ -91,14 +91,26 @@ my $ok = YAML::XMLConfig::Shibboleth::IDP->make_attribute_conf({
 ok($ok, $why);
 
 my $diff = XML::SemanticDiff->new();
-sub compare {
+sub compare_unordered {
   my ($type) = @_;
   my @files = map { "t/data/${_}attribute-$type.xml"} ("expected-", "");
   return [$diff->compare(@files)];
 }
 
-eq_or_diff(compare("filter"), [], "attribute-filter");
-eq_or_diff(compare("resolver"), [], "attribute-resolver");
+eq_or_diff(compare_unordered("filter"), [], "Unordered: attribute-filter");
+eq_or_diff(compare_unordered("resolver"), [], "Unordered: attribute-resolver");
+
+because <<'/';
+make_attribute_conf provides the element order that the IDP needs
+/
+sub texts_for {
+  my ($type) = @_;
+  return map {
+    [read_file("t/data/${_}attribute-$type.xml")]
+  } ("", "expected-");
+}
+is_deeply(texts_for("filter"), $why);
+is_deeply(texts_for("resolver"), $why);
 
 because <<'/';
 make_attribute_conf dies if the filter YAML grants an attribute not defined
@@ -111,7 +123,10 @@ eval {
   });
 };
 like($@, qr/eduPersonBwaHaHa/, $why);
-eq_or_diff(compare("filter"), [], "...and doesn't write the XML files");
+eq_or_diff(
+  compare_unordered("filter"), [],
+  "...and doesn't write the XML files"
+);
 
 done_testing;
 write_file("lib/YAML/XMLConfig/Shibboleth/IDP.pod", read_file($0))

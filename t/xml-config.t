@@ -20,13 +20,21 @@ END { unlink $yaml_config, $weaver_path if $yaml_config }
 # A config weaver used in examples, and something for it to act on.
 #
 my $weaver_hash = {
-  a => {'$' => '$x', num => 42, b => 'buzz$x'},
+  a => {'$' => '$x', num => 42, b => '&buzz$x'},
   b => {hive => "yes"},
 };
 my $weaver = YAML::XMLConfig->weaver($weaver_hash);
+my $fancy_weaver = YAML::XMLConfig->weaver(
+  {%$weaver_hash,
+    '$ELEMENT_ORDER' => {stuff => [qw(b a)]},
+    '$CDATA' => [qw(ant)],
+  }
+);
 my $config_hash = {
-  a => {'$' => ["ing bees"], num => 0, ant => "hill"},
-  b => [ {direction => "North"}, {direction => "South"}],
+  stuff => {
+    a => {'$' => ["ing bees"], num => 0, ant => ["hill"]},
+    b => [ {direction => "North"}, {direction => "South"}],
+  },
 };
 
 =head1 NAME
@@ -41,17 +49,28 @@ YAML::XMLConfig - Use tweaked YAML to create Java and other XML config files
                     # or #
   my $xml = $weaver->read_config("config.yaml", {as => "xml");
 
+=head1 YAML EXTENSIONS
+
+Yada yada yada....
+
 =head1 METHODS
 
 =head2 weaver
 
-The C<weaver> method takes a hashref and returns an object with the same
-keys as the original, but with each value turned into a macro.  (So the
-values must all be themselves hashrefs.)
+The C<weaver> method takes a hashref and returns an object with the same keys
+as the original, but with each value turned into a macro.  (So the values must
+all be themselves hashrefs.)
 
 It can also take a string, the path of a YAML file.  In that case it uses the
 C<load_yaml> routine to read a hashref from the file, and proceeds as if the
 hashref had been passed in.
+
+Exceptions: the '$ELEMENT_ORDER' and '$CDATA' sections don't become macros.
+The '$ELEMENT_ORDER' section is used to control element order in XML output.
+
+The '$CDATA' section controls which keys will have their string values output
+as CDATA sections.
+
 =cut
 
 because <<'/';
@@ -63,6 +82,19 @@ eq_or_diff(
   YAML::XMLConfig->weaver($weaver_hash),
   $why,
 );
+
+because <<'/';
+Exceptions: the '$ELEMENT_ORDER' and '$CDATA' sections don't become macros.
+/
+eq_or_diff(
+  $fancy_weaver->macros,
+  $weaver->macros,
+  $why,
+);
+
+because <<'/';
+The '$ELEMENT_ORDER' section is used to control element order in XML output
+/
 
 =head2 load_yaml
 
@@ -91,7 +123,7 @@ Reads in a YAML config file and weaves in the defaults, returning either an
 object reference or XML text.  The following are equivalent:
 
   $weaver->read_config("config.yaml")
-  $weaver->weave("", $weaver->load_yaml("config.yaml"))
+  $weaver->weave($weaver->load_yaml("config.yaml"))
 
 as are these two:
 
@@ -105,7 +137,7 @@ read_config($foo) is equivalent to weave("", $weaver->load_yaml($foo))
 write_file($yaml_config, Dump($config_hash));
 eq_or_diff(
   $weaver->read_config($yaml_config),
-  $weaver->weave("", $weaver->load_yaml($yaml_config)),
+  $weaver->weave($weaver->load_yaml($yaml_config)),
   $why,
 );
 
@@ -121,16 +153,19 @@ eq_or_diff(
 
 =head2 xml
 
-A convenience abbreviation for C<XML::Simple>'s C<XMLout> routine.
-C<< $weaver->xml($h) >> is equivalent to
+Returns an XML string representation of the object, similar to
 
-  XMLout(
+  XML::Simple::XMLout(
     $h,
     keeproot => 1,
     keyattr => [],
     attrindent => 1,
     xmldecl => '<?xml version="1.0" encoding="UTF-8"?>',
   )
+
+-- but we subclass XML::Simple to use the C<element_order> method to control
+the order of elements in the XML, and the C<cdata> method to choose which
+values are printed as CDATA.
 =cut
 
 because <<'/';
@@ -145,6 +180,36 @@ eq_or_diff(
     attrindent => 1,
     xmldecl => '<?xml version="1.0" encoding="UTF-8"?>',
   ),
+  $why,
+);
+
+because <<'/';
+We subclass XML::Simple to use the C<element_order> method to control
+the order of elements in the XML, and the C<cdata> method to choose which
+values are printed as CDATA.
+/
+eq_or_diff(
+  $fancy_weaver->xml($fancy_weaver->weave($config_hash)),
+  <<'/',
+<?xml version="1.0" encoding="UTF-8"?>
+<stuff>
+  <b direction="North"
+     hive="yes" />
+  <b direction="South"
+     hive="yes" />
+  <a b="&amp;buzzing bees"
+     num="0">
+    <ant><![CDATA[hill]]></ant>
+  </a>
+</stuff>
+/
+#  XMLout(
+#    $weaver->weave($config_hash),
+#    keeproot => 1,
+#    keyattr => [],
+#    attrindent => 1,
+#    xmldecl => '<?xml version="1.0" encoding="UTF-8"?>',
+#  ),
   $why,
 );
 
@@ -170,14 +235,15 @@ The POD statements set $mac0 and $mac1 to identical macros
 
 =head2 weave
 
-The C<weave> method takes two arguments, the I<key> and the I<item>. The key is
-used to look up a macro.  The item is that to which the macro may be applied:
-either a scalar, a hashref, or an arrayref.  If an arrayref, C<weave> returns
-an arrayref calculated by calling itself recursively, with the same key, for
-each element of the array, so the following two expressions are equivalent:
+The C<weave> method takes two arguments, the I<item> and the I<key> (which
+defaults to the empty string, i.e. to not using an macro. The key is used to
+look up a macro.  The item is that to which the macro may be applied: either a
+scalar, a hashref, or an arrayref.  If an arrayref, C<weave> returns an
+arrayref calculated by calling itself recursively, with the same key, for each
+element of the array, so the following two expressions are equivalent:
 
-   $weaver->weave($key, $a)
-   [map { $weaver->weave($key, $_) } @$a]
+   $weaver->weave($a, $key)
+   [map { $weaver->weave($_, $key) } @$a]
 
 =cut
 
@@ -185,21 +251,21 @@ because <<'/';
 Arrayref: call C<weave> recursively
 /
 eq_or_diff(
-  $weaver->weave("", [{b => {ant => "hill"}}]),
+  $weaver->weave([{b => {ant => "hill"}}]),
   [{b => {hive => "yes", ant => "hill"}}],
   "$why (key miss, hit w/recursion)",
 );
 
 eq_or_diff(
-  $weaver->weave("", [{ant => "hill"}]),
+  $weaver->weave([{ant => "hill"}]),
   [{ant => "hill"}],
   "$why (complete key miss)",
 );
 
 eq_or_diff(
-  $weaver->weave("a", [{'$' => "red"}, {'$' => "green", elf => "Santa's"}]),
-  [ {num => 42, b => "buzzred"},
-    {num => 42, b => "buzzgreen", elf => "Santa's"},
+  $weaver->weave([{'$' => "red"}, {'$' => "green", elf => "Santa's"}], "a"),
+  [ {num => 42, b => "&buzzred"},
+    {num => 42, b => "&buzzgreen", elf => "Santa's"},
   ],
   "$why (key hit)",
 );
@@ -220,22 +286,22 @@ because <<'/';
 Scalar: if the key has a macro, it's applied
 /
 eq_or_diff(
-  $weaver->weave("a", "ing bees"),
-  {num => 42, b => "buzzing bees"},
+  $weaver->weave("ing bees", "a"),
+  {num => 42, b => "&buzzing bees"},
   $why,
 );
 because <<'/';
 Scalar: and the result is the default hash
 /
 { my ($default, undef) = $weaver->macro_for("a")->default_for("ing bees");
-  eq_or_diff($weaver->weave("a", "ing bees"), $default, $why);
+  eq_or_diff($weaver->weave("ing bees", "a"), $default, $why);
 }
 
 because <<'/';
 Scalar: if the key has no  macro, return the scalar
 /
 eq_or_diff(
-  $weaver->weave("nokey", "ing bees"),
+  $weaver->weave("ing bees", "nokey"),
   "ing bees",
   $why,
 );
@@ -268,8 +334,8 @@ because <<'/';
 Hashref: if the key has a macro, it's applied
 /
 eq_or_diff(
-  $weaver->weave("a", {'$' => ["ing bees"], num => 0, ant => "hill"}),
-  {num => 0, b => "buzzing bees", ant => "hill"},
+  $weaver->weave({'$' => ["ing bees"], num => 0, ant => "hill"}, "a"),
+  {num => 0, b => "&buzzing bees", ant => "hill"},
   $why,
 );
 
@@ -277,7 +343,7 @@ because <<'/';
 Hashref: if the key has no  macro, call C<weave> recursively
 /
 eq_or_diff(
-  $weaver->weave("nokey", {b => {ant => "hill"}}),
+  $weaver->weave({b => {ant => "hill"}}, "nokey"),
   {b => {hive => "yes", ant => "hill"}},
   $why,
 );
@@ -295,7 +361,7 @@ When the hashref has zero arguments and the macro requires one, then the
 macro isn't called.
 /
 eq_or_diff(
-  $weaver->weave("a", {num => 42, b => {ant => "bill"}}),
+  $weaver->weave({num => 42, b => {ant => "bill"}}, "a"),
   {num => 42, b => {ant => "bill", hive => "yes"}},
   $why,
 );

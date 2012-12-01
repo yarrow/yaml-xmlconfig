@@ -45,3 +45,23 @@ resolver:AttributeDefinition:
     ref: myLDAP
 resolver:AttributeEncoder:
   xmlns: urn:mace:shibboleth:2.0:attribute:encoder
+
+$ELEMENT_ORDER:
+  AttributeFilterPolicy:
+  - PolicyRequirementRule
+  - AttributeRule
+  AttributeFilterPolicyGroup:
+  - AttributeFilterPolicy
+  AttributeRule:
+  - PermitValueRule
+  AttributeResolver:
+  - resolver:AttributeDefinition
+  - resolver:DataConnector
+  - resolver:PrincipalConnector
+  resolver:AttributeDefinition:
+  - resolver:Dependency
+  - resolver:AttributeEncoder
+
+$CDATA:
+- FilterTemplate
+- QueryTemplate
